@@ -1,89 +1,42 @@
-#include "shell.h"
+#include "main.h"
 
 /**
- * handle_builtin - Handle Builtin Command
- * @cmd: Parsed Command
- * @er:statue of last Excute
- * Return: -1 Fail 0 Succes (Return :Excute Builtin)
+ * execute - executes a shell command
+ * @buffer: buffer string
+ * @argVec: argument vector
+ * @envVec: environment vector
  */
 
-int handle_builtin(char **cmd, int er)
+void execute(char *buffer, char *argVec[], char *envVec[])
 {
-	 bul_t bil[] = {
-		{"cd", change_dir},
-		{"env", dis_env},
-		{"help", display_help},
-		{"echo", echo_bul},
-		{"history", history_dis},
-		{NULL, NULL}
-	};
-	int i = 0;
-
-	while ((bil + i)->command)
-	{
-		if (_strcmp(cmd[0], (bil + i)->command) == 0)
-		{
-			return ((bil + i)->fun(cmd, er));
-		}
-		i++;
-	}
-	return (-1);
-}
-/**
- * check_cmd - Excute Simple Shell Command (Fork,Wait,Excute)
- *
- * @cmd:Parsed Command
- * @input: User Input
- * @c:Shell Excution Time Case of Command Not Found
- * @argv:Program Name
- * Return: 1 Case Command Null -1 Wrong Command 0 Command Excuted
- */
-int check_cmd(char **cmd, char *input, int c, char **argv)
-{
-	int status;
-	pid_t pid;
-
-	if (*cmd == NULL)
-	{
-		return (-1);
-	}
+	int pid;
 
 	pid = fork();
 	if (pid == -1)
 	{
-		perror("Error");
-		return (-1);
+		/* fork error */
+		/* return (1); */
+		write(2, "fork error!", 11);
 	}
-
-	if (pid == 0)
-	{
-		if (_strncmp(*cmd, "./", 2) != 0 && _strncmp(*cmd, "/", 1) != 0)
+	if (pid == 0) /* Child process */
+	{       /* Start of an execve call */
+		if (execve(buffer, argVec, envVec) == -1)
 		{
-			path_cmd(cmd);
+			/* command not found error handler */
+			char execErr1[] = "./shell"; /* "Could not execute: "; */
+			char execErr2[] = ": No such file or directory\n";
+			/* perror("Could not execute "); */
+			write(2, execErr1, sizeof(execErr1));
+			/* write(2, buffer, sizeof(buffer)); */
+			write(2, execErr2, sizeof(execErr2));
+			exit(0);
 		}
-
-		if (execve(*cmd, cmd, environ) == -1)
-		{
-			print_error(cmd[0], c, argv);
-			free(input);
-			free(cmd);
-			exit(EXIT_FAILURE);
-		}
-		return (EXIT_SUCCESS);
 	}
-	wait(&status);
-	return (0);
-}
-/**
- * signal_to_handel - Handle ^C
- * @sig:Captured Signal
- * Return: Void
- */
-void signal_to_handel(int sig)
-{
-	if (sig == SIGINT)
+	else /* Main process */
 	{
-		PRINTER("\n$ ");
+		int wstatus;
+
+		wait(&wstatus);
+		check_wait_status(wstatus);
 	}
 }
-
